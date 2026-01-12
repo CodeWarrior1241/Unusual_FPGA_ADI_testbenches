@@ -90,6 +90,81 @@ endmodule
 - **Clock Generation**: SSI clock VIP generates 250 MHz data clock
 - **TDD Disabled**: `tdd_sync_i` tied to 0, `up_enable` and `up_txnrx` tied to 1
 
+## LVDS Interface Details
+
+### Loopback Implementation
+
+The testbench does **not** use any custom behavioral models or VIPs for the LVDS interface. The loopback is implemented through direct wire connections in `system_tb.sv` (lines 52-53, 62-63):
+
+```systemverilog
+wire [5:0] tx_data_out_n;   // Line 40 - local wires
+wire [5:0] tx_data_out_p;   // Line 41
+
+test_harness `TH (
+    .rx_data_in_n (tx_data_out_n),   // Line 52 - loopback: same wire
+    .rx_data_in_p (tx_data_out_p),   // Line 53 - loopback: same wire
+    // ...
+    .tx_data_out_n (tx_data_out_n),  // Line 62 - TX drives wire
+    .tx_data_out_p (tx_data_out_p),  // Line 63 - TX drives wire
+);
+```
+
+The same wires are connected to both TX outputs and RX inputs - whatever axi_ad9361 drives on TX is immediately visible on RX.
+
+### Signal Chain Inside axi_ad9361
+
+The UUT uses real Xilinx primitives (from UNISIM library) for simulation:
+
+**TX Path** (`axi_ad9361_lvds_if.v` lines 488-510):
+```
+tx_data[47:0] → tx_data_sel mux → tx_data_0/tx_data_1
+                                        │
+                                        ▼
+                              ad_data_out (×6 channels)
+                                        │
+                                        ▼
+                              ODDR (DDR output register)
+                                        │
+                                        ▼
+                              OBUFDS (LVDS output buffer)
+                                        │
+                                        ▼
+                              tx_data_out_p/n[5:0]
+```
+
+**RX Path** (`axi_ad9361_lvds_if.v` lines 442-463):
+```
+rx_data_in_p/n[5:0]
+        │
+        ▼
+  IBUFDS (LVDS input buffer)
+        │
+        ▼
+  IDELAYE2/3 (optional delay line)
+        │
+        ▼
+  IDDR (DDR input register)
+        │
+        ▼
+  rx_data_0_s/rx_data_1_s → frame delineation → adc_data[47:0]
+```
+
+### LVDS Primitive Modules
+
+| Module | File | Function |
+|--------|------|----------|
+| `ad_data_out` | `library/xilinx/common/ad_data_out.v` | ODDR → (ODELAY) → OBUFDS |
+| `ad_data_in` | `library/xilinx/common/ad_data_in.v` | IBUFDS → (IDELAY) → IDDR |
+| `axi_ad9361_lvds_if` | `library/axi_ad9361/xilinx/axi_ad9361_lvds_if.v` | Data mux, frame generation, delineation |
+
+### Why No Behavioral Models Are Needed
+
+1. **Direct wire loopback** - TX outputs connect directly to RX inputs via Verilog wires
+2. **Xilinx simulation primitives** - IBUFDS, OBUFDS, IDDR, ODDR are provided by Vivado's UNISIM library
+3. **CLK VIP provides timing** - The 250 MHz `ssi_clk` drives both RX sample clock and internal line clock
+
+The Xilinx primitives handle the DDR timing relationship between rising/falling edge data and produce valid waveforms that are captured correctly on the RX side without external models.
+
 ## Test Program (`test_program.sv`)
 
 The test program contains four distinct test cases:

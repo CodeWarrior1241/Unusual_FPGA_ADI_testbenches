@@ -372,12 +372,72 @@ initial begin
 end
 ```
 
+## Configuration Options
+
+### axi_ad9361 IP Parameters
+
+The `axi_ad9361` IP core supports several configuration parameters that affect the physical interface and channel configuration:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `CMOS_OR_LVDS_N` | 0 | **0 = LVDS** (differential, 6 data pairs), **1 = CMOS** (single-ended, 12 data bits) |
+| `MODE_1R1T` | 0 | **0 = 2R2T** (2 TX + 2 RX channels), **1 = 1R1T** (1 TX + 1 RX channel) |
+| `TDD_DISABLE` | 0 | Disable TDD (Time Division Duplex) support |
+| `ADC_INIT_DELAY` | 0 | Initial IDELAY tap setting for RX path |
+| `DAC_IODELAY_ENABLE` | 0 | Enable ODELAY on TX path |
+| `DAC_DDS_DISABLE` | 0 | Disable internal DDS tone generators |
+| `USE_SSI_CLK` | 1 | Use SSI clock from AD9361 vs internal clock |
+
+### Available Test Configurations
+
+Configuration files are located in `cfgs/` and set parameters via `ad_project_params`:
+
+| Config | Status | Interface | Mode | Description |
+|--------|--------|-----------|------|-------------|
+| `cfg1` | **Available** | LVDS | 2R2T | Default configuration with full 2×2 MIMO |
+
+### Planned/Potential Configurations
+
+The following configurations could be added to extend test coverage. **These are not currently available** and would require corresponding changes to `system_tb.sv` and/or `test_program.sv`:
+
+| Config | Interface | Mode | Parameters | Notes |
+|--------|-----------|------|------------|-------|
+| `cfg2_cmos` | CMOS | 2R2T | `CMOS_OR_LVDS_N=1` | Requires single-ended loopback wiring (12 bits vs 6 diff pairs) |
+| `cfg3_1r1t` | LVDS | 1R1T | `MODE_1R1T=1` | Single TX/RX channel mode - **planned for implementation** |
+| `cfg4_no_dds` | LVDS | 2R2T | `DAC_DDS_DISABLE=1` | DMA-only TX testing (DDS test would be skipped) |
+
+### Configuration File Format
+
+Configuration files set parameters using the `ad_project_params` array:
+
+```tcl
+global ad_project_params
+
+# Example: Enable 1R1T mode
+set ad_project_params(MODE_1R1T) 1
+```
+
+### Interface Comparison: LVDS vs CMOS
+
+| Feature | LVDS (cfg1) | CMOS |
+|---------|-------------|------|
+| Data signals | 6 differential pairs (`rx_data_in_p/n[5:0]`) | 12 single-ended bits (`rx_data_in[11:0]`) |
+| Clock/Frame | Differential | Single-ended |
+| Interface module | `axi_ad9361_lvds_if.v` | `axi_ad9361_cmos_if.v` |
+| Example design | FMCOMMS2/3 | ADALM-PLUTO |
+
 ## Running the Tests
 
 Use the `build_fmcomms2_tests.tcl` script to build and run:
 
 ```tcl
 source build_fmcomms2_tests.tcl
+```
+
+To run with a specific configuration:
+```tcl
+build_fmcomms2_env "C:/path/to/hdl" "cfg1"
+run_fmcomms2_test "C:/path/to/hdl" "cfg1" "test_program"
 ```
 
 Successful completion shows:

@@ -4,6 +4,10 @@
 ## This script builds and runs the FMCOMMS2/3 testbenches from within Vivado
 ## without requiring the Make build system.
 ##
+## Intent is to test the ADI IP without invoking the ADI makefile-driven
+## system, which, while good and useful, necessitates either Linux or
+## WSL/VM for a Windows environment.
+##
 ## Usage (from Vivado TCL console):
 ##   source <path_to_this_script>/build_fmcomms2_tests.tcl
 ##   build_fmcomms2_tests <adi_hdl_dir> [config_name] [test_name] [mode]
@@ -18,7 +22,7 @@
 ##   mode          - Optional: "batch" or "gui" (default: "batch")
 ##
 ## IMPORTANT: The ADI HDL libraries must be pre-built before running tests.
-##            Use build_fmcomms2_ip.tcl to build the required IP first.
+##            Use projects/fmcomms2/build_fmcomms2_ip.tcl to build the required IP first.
 ##
 ## Examples:
 ##   # Build and run default test:
@@ -43,8 +47,8 @@
 # Get the directory where this script is located
 set script_dir [file dirname [file normalize [info script]]]
 
-# Define the testbenches directory
-set ad_tb_dir [file normalize $script_dir]
+# Define the testbenches directory (this script is in testbenches/project/fmcomms2/)
+set ad_tb_dir [file normalize "$script_dir/../../.."]
 
 # Skip Vivado version checking
 set IGNORE_VERSION_CHECK 1
@@ -162,7 +166,7 @@ proc check_hdl_libs {} {
             puts "  - $lib"
         }
         puts ""
-        puts "Please build them first using build_fmcomms2_ip.tcl or make."
+        puts "Please build them first using projects/fmcomms2/build_fmcomms2_ip.tcl or make."
         return 0
     }
 

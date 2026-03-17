@@ -428,10 +428,16 @@ set ad_project_params(MODE_1R1T) 1
 
 ## Running the Tests
 
-Use the `build_fmcomms2_tests.tcl` script to build and run:
+ADI HDL IP libraries must be built before running tests. From the HDL repo root:
+```tcl
+source projects/fmcomms2/build_fmcomms2_ip.tcl
+build_adi_fmcomms2_ip "C:/path/to/target"
+```
+
+Then use `build_fmcomms2_tests.tcl` (located in this directory) to build and run:
 
 ```tcl
-source build_fmcomms2_tests.tcl
+source testbenches/project/fmcomms2/build_fmcomms2_tests.tcl
 ```
 
 To run with a specific configuration:
